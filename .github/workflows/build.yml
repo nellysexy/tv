@@ -7,9 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: NexoTV/NexoTV
     steps:
       - uses: actions/checkout@v4
 
@@ -18,13 +15,20 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # El SDK de Android ya viene instalado en ubuntu-latest, no hace falta instalarlo.
+      # Busca la carpeta del proyecto (donde está gradlew), esté donde esté.
+      - name: Localizar proyecto
+        id: proj
+        run: |
+          G=$(find . -name gradlew -not -path "*/node_modules/*" | head -n1)
+          echo "dir=$(dirname "$G")" >> "$GITHUB_OUTPUT"
+
       - name: Aceptar licencias del SDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Compilar
+        working-directory: ${{ steps.proj.outputs.dir }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
@@ -32,4 +36,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: NexoTV-apk
-          path: NexoTV/NexoTV/app/build/outputs/apk/release/*.apk
+          path: ${{ steps.proj.outputs.dir }}/app/build/outputs/apk/release/*.apk
